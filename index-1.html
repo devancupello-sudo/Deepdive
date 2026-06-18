@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Deep Dive">
+<meta name="theme-color" content="#0D0D0D">
+<title>Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D0D0D;--surface:#141414;--border:#1E1E1E;--border2:#2A2A2A;
+  --amber:#E8A020;--amber-dim:#7A5010;--slate:#6B7280;--slate-hi:#9CA3AF;
+  --pass:#22C55E;--fail:#EF4444;--text:#E5E7EB;--text-dim:#4B5563;--white:#FFFFFF;
+}
+html,body{height:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+.mono{font-family:'IBM Plex Mono',monospace}
+#app{max-width:480px;margin:0 auto;padding:16px 16px 80px}
+
+/* NAV */
+.nav{display:flex;gap:6px;margin-bottom:20px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.nav-btn{flex:1;padding:8px 4px;border:none;border-radius:7px;background:transparent;color:var(--slate);font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .15s;letter-spacing:.03em}
+.nav-btn.active{background:var(--amber);color:var(--bg);font-weight:600}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.card-label{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+
+/* GATE PROGRESS */
+.gate-bar{display:flex;gap:4px;margin-bottom:8px}
+.gate-pip{flex:1;height:3px;border-radius:2px;background:var(--border2);transition:background .2s}
+.gate-pip.done{background:var(--amber)}
+.gate-pip.active{background:var(--amber-dim)}
+.gate-labels{display:flex;margin-bottom:16px}
+.gate-lbl{flex:1;font-size:9px;font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--text-dim);text-align:center}
+.gate-lbl:first-child{text-align:left}.gate-lbl:last-child{text-align:right}
+.gate-lbl.done{color:var(--amber)}.gate-lbl.active{color:var(--slate-hi)}
+.gate-title{font-size:18px;font-weight:600;color:var(--white);margin-bottom:4px}
+.gate-sub{font-size:12px;color:var(--slate);margin-bottom:16px;line-height:1.5}
+
+/* CHECKLIST */
+.check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.check-item:last-child{border-bottom:none}
+.check-box{width:20px;height:20px;border:2px solid var(--border2);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px}
+.check-box.checked{background:var(--amber);border-color:var(--amber)}
+.check-label{font-size:13px;line-height:1.45;color:var(--text)}
+.check-label.checked{color:var(--slate);text-decoration:line-through}
+
+/* INPUTS */
+.field-label{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--slate);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;display:block}
+.field-group{margin-bottom:14px}
+input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:16px;padding:10px 12px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+input[type=text]:focus,textarea:focus{border-color:var(--amber)}
+textarea{resize:none;line-height:1.5}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border:none;border-radius:9px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.btn-primary{background:var(--amber);color:var(--bg);width:100%}
+.btn-primary:active{opacity:.8}
+.btn-primary:disabled{opacity:.35;cursor:default}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--slate-hi);width:100%}
+.btn-ghost:active{opacity:.7}
+.btn-ghost:disabled{opacity:.35;cursor:default}
+.btn-danger{background:transparent;border:1px solid rgba(239,68,68,.3);color:var(--fail);width:100%;font-size:11px}
+.btn-sm{padding:7px 12px;font-size:11px}
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.btn-row .btn{flex:1}
+
+/* VERDICT PILLS */
+.decision-row{display:flex;gap:8px;margin-bottom:16px}
+.decision-pill{flex:1;padding:10px 4px;border:2px solid var(--border2);border-radius:9px;background:transparent;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;cursor:pointer;text-align:center;transition:all .15s;color:var(--slate)}
+.decision-pill.acc.sel{border-color:var(--pass);color:var(--pass);background:rgba(34,197,94,.1)}
+.decision-pill.mon.sel{border-color:var(--amber);color:var(--amber);background:rgba(232,160,32,.1)}
+.decision-pill.pas.sel{border-color:var(--fail);color:var(--fail);background:rgba(239,68,68,.1)}
+
+/* TIMER */
+.timer-wrap{text-align:center;padding:8px 0}
+.timer-ring{width:120px;height:120px;border:3px solid var(--amber);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 16px;transition:border-color .3s}
+.timer-ring.done{border-color:var(--pass)}
+.timer-time{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--white);line-height:1}
+.timer-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--slate);letter-spacing:.1em;margin-top:3px}
+
+/* RITUAL BOX */
+.ritual-box{background:var(--bg);border:1px solid var(--amber-dim);border-radius:10px;padding:14px;margin-bottom:14px}
+.ritual-q{font-size:11px;color:var(--amber);font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;margin-bottom:6px}
+.ritual-a{font-size:14px;color:var(--text);line-height:1.4}
+
+/* WATCHLIST */
+.watch-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:10px}
+.watch-item:last-child{border-bottom:none}
+.watch-ticker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--amber);font-weight:600}
+.watch-name{font-size:13px;color:var(--text)}
+.watch-note{font-size:11px;color:var(--slate)}
+.del-btn{background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:5px;line-height:1;font-family:'IBM Plex Sans',sans-serif}
+
+/* VERDICTS */
+.verdict-item{padding:12px 0;border-bottom:1px solid var(--border)}
+.verdict-item:last-child{border-bottom:none}
+.verdict-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.verdict-ticker{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--white);font-weight:600}
+.verdict-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;letter-spacing:.06em}
+.badge-acc{background:rgba(34,197,94,.15);color:var(--pass)}
+.badge-mon{background:rgba(232,160,32,.15);color:var(--amber)}
+.badge-pas{background:rgba(239,68,68,.15);color:var(--fail)}
+.verdict-meta{font-size:11px;color:var(--slate);margin-top:2px;line-height:1.4}
+
+/* AI */
+.ai-bubble{background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap}
+.ai-thinking{display:flex;gap:5px;align-items:center;padding:10px 0}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--amber);animation:pulse 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* MISC */
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.header-title{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--amber);letter-spacing:.1em}
+.header-sub{font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 7px;border-radius:4px;background:var(--border2);color:var(--slate-hi);letter-spacing:.05em}
+.empty-state{text-align:center;padding:32px 16px;color:var(--slate);font-size:13px;line-height:1.8}
+.jump-rule{background:rgba(122,80,16,.2);border:1px solid var(--amber-dim);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.jump-rule-title{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--amber);letter-spacing:.08em;margin-bottom:4px}
+.jump-rule-body{font-size:12px;color:var(--slate-hi);line-height:1.5}
+.pass-box{margin-top:14px;padding:12px;border-radius:8px}
+.field-row{display:flex;gap:10px}
+.field-row .field-group{flex:1}
+.hidden{display:none}
+.loading{display:flex;align-items:center;justify-content:center;min-height:100vh}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading"><div class="ai-thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────────
+const KEYS = { active:'inv_active', watch:'inv_watch', verdicts:'inv_verdicts' };
+
+const GATE1_CHECKS = [
+  'Business understandable within one read?',
+  'Moat identifiable (type + source)?',
+  'FCF positive 7+ years, no serial dilution?',
+  'Management skin in the game, no governance flags?',
+  'Price roughly in valuation ballpark?'
+];
+
+const GATE_LABELS = ['Filter','Business','Model','Memo','Verdict'];
+
+function emptyStock(name, ticker, firstQ) {
+  return {
+    name, ticker,
+    startedDate: new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}),
+    currentGate: 1,
+    gate1: { checks:[false,false,false,false,false], verdict:null },
+    gate2: { currentQuestion: firstQ||'', notes:'', nextQuestion:'' },
+    gate3: { bear:'', base:'', bull:'', pwIV:'', klarmanEntry:'' },
+    gate4: { bullCase:'', bearCase:'', thesisKiller:'', catalyst:'', timeline:'' },
+    gate5: { decision:null, triggerPrice:'', invalidator:'', catalystDate:'' }
+  };
+}
+
+let STATE = {
+  tab: 'active',
+  active: null,
+  watch: [],
+  verdicts: [],
+  sessionStarted: false,
+  timerSecs: 25*60,
+  timerRunning: false,
+  timerDone: false,
+  sessionQ: '',
+  sessionDone: '',
+  aiOutput: {},   // keyed by gate
+  aiLoading: {},
+  loaded: false
+};
+
+function load(key) { try { const v=localStorage.getItem(key); return v?JSON.parse(v):null; } catch{return null;} }
+function save(key,val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch{} }
+
+function loadState() {
+  STATE.active = load(KEYS.active);
+  STATE.watch = load(KEYS.watch) || [];
+  STATE.verdicts = load(KEYS.verdicts) || [];
+  STATE.loaded = true;
+}
+
+function persist() {
+  save(KEYS.active, STATE.active);
+  save(KEYS.watch, STATE.watch);
+  save(KEYS.verdicts, STATE.verdicts);
+}
+
+// ── TIMER ──────────────────────────────────────────────────────────────────────
+let timerInterval = null;
+function timerToggle() {
+  if (STATE.timerRunning) {
+    clearInterval(timerInterval);
+    STATE.timerRunning = false;
+  } else {
+    STATE.timerDone = false;
+    STATE.timerRunning = true;
+    timerInterval = setInterval(() => {
+      STATE.timerSecs--;
+      if (STATE.timerSecs <= 0) {
+        clearInterval(timerInterval);
+        STATE.timerRunning = false;
+        STATE.timerDone = true;
+        STATE.timerSecs = 0;
+      }
+      renderTimer();
+    }, 1000);
+  }
+  renderTimer();
+}
+function timerReset() {
+  clearInterval(timerInterval);
+  STATE.timerRunning = false;
+  STATE.timerDone = false;
+  STATE.timerSecs = 25*60;
+  STATE.sessionStarted = false;
+  renderTimer();
+}
+function fmtTimer() {
+  const m = Math.floor(STATE.timerSecs/60), s = STATE.timerSecs%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function renderTimer() {
+  const el = document.getElementById('timer-time');
+  const lbl = document.getElementById('timer-lbl');
+  const ring = document.getElementById('timer-ring');
+  const doneMsg = document.getElementById('timer-done-msg');
+  if (!el) return;
+  el.textContent = fmtTimer();
+  if (lbl) lbl.textContent = STATE.timerDone ? 'DONE' : STATE.timerRunning ? 'FOCUS' : 'PAUSED';
+  if (ring) ring.className = 'timer-ring' + (STATE.timerDone ? ' done' : '');
+  if (doneMsg) doneMsg.className = STATE.timerDone ? '' : 'hidden';
+  const toggleBtn = document.getElementById('timer-toggle-btn');
+  if (toggleBtn) toggleBtn.textContent = STATE.timerRunning ? 'Pause' : 'Resume';
+}
+
+// ── AI ─────────────────────────────────────────────────────────────────────────
+async function askClaude(prompt, gateKey) {
+  STATE.aiLoading[gateKey] = true;
+  STATE.aiOutput[gateKey] = '';
+  renderAI(gateKey);
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:800,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    STATE.aiOutput[gateKey] = data.content?.map(b=>b.text||'').join('')||'No response.';
+  } catch(e) {
+    STATE.aiOutput[gateKey] = 'Error connecting. Check your internet connection.';
+  }
+  STATE.aiLoading[gateKey] = false;
+  renderAI(gateKey);
+}
+function renderAI(gateKey) {
+  const loading = document.getElementById(`ai-loading-${gateKey}`);
+  const output = document.getElementById(`ai-output-${gateKey}`);
+  if (loading) loading.className = STATE.aiLoading[gateKey] ? 'ai-thinking' : 'hidden';
+  if (output) {
+    output.className = STATE.aiOutput[gateKey] ? 'ai-bubble' : 'hidden';
+    output.textContent = STATE.aiOutput[gateKey] || '';
+  }
+}
+
+// ── RENDER HELPERS ─────────────────────────────────────────────────────────────
+function icon(checked) {
+  return checked ? `<svg width="11" height="8" viewBox="0 0 11 8" fill="none"><path d="M1 4L4 7L10 1" stroke="#0D0D0D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '';
+}
+
+function renderGateBar(current) {
+  const pips = GATE_LABELS.map((_,i) => {
+    const cls = i < current-1 ? 'done' : i === current-1 ? 'active' : '';
+    return `<div class="gate-pip ${cls}"></div>`;
+  }).join('');
+  const labels = GATE_LABELS.map((l,i) => {
+    const cls = i < current-1 ? 'done' : i === current-1 ? 'active' : '';
+    return `<div class="gate-lbl ${cls}">${l}</div>`;
+  }).join('');
+  return `<div class="gate-bar">${pips}</div><div class="gate-labels">${labels}</div>`;
+}
+
+// ── GATE RENDERS ───────────────────────────────────────────────────────────────
+function renderGate1(s) {
+  const g = s.gate1;
+  const allChecked = g.checks.every(Boolean);
+  const checks = GATE1_CHECKS.map((q,i) => `
+    <div class="check-item" onclick="toggleCheck(${i})">
+      <div class="check-box ${g.checks[i]?'checked':''}" id="chk-${i}">${icon(g.checks[i])}</div>
+      <span class="check-label ${g.checks[i]?'checked':''}">${q}</span>
+    </div>`).join('');
+
+  let verdictHTML = '';
+  if (allChecked && !g.verdict) {
+    verdictHTML = `<div style="margin-top:16px">
+      <div class="field-label">Verdict</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" style="background:var(--pass)" onclick="setGate1Verdict('PASS')">PASS →</button>
+        <button class="btn btn-ghost" style="border-color:rgba(239,68,68,.4);color:var(--fail)" onclick="setGate1Verdict('FAIL')">FAIL</button>
+      </div></div>`;
+  }
+  if (g.verdict==='FAIL') {
+    verdictHTML = `<div class="pass-box" style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3)">
+      <div style="color:var(--fail);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600">FAILED — PARK TO WATCHLIST</div>
+      <div style="color:var(--slate);font-size:12px;margin-top:4px">Doesn't meet the filter. Park it with a note on what would need to change.</div>
+    </div>`;
+  }
+  if (g.verdict==='PASS') {
+    verdictHTML = `<div class="pass-box" style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.3)">
+      <div style="color:var(--pass);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600">PASSED → GATE 2</div>
+    </div>`;
+  }
+
+  return `
+    <div class="gate-title">Gate 1 — Filter</div>
+    <div class="gate-sub">Pass/fail only. Stop here if any box stays unchecked.</div>
+    ${checks}
+    ${verdictHTML}
+    ${g.verdict==='PASS' ? `<div class="divider"></div><button class="btn btn-primary" onclick="setGate(2)">Continue to Gate 2 →</button>` : ''}
+  `;
+}
+
+function renderGate2(s) {
+  const g = s.gate2;
+  const canAdvance = g.currentQuestion && g.notes && g.nextQuestion;
+  return `
+    <div class="gate-title">Gate 2 — Business Quality</div>
+    <div class="gate-sub">One question per session. Answer it. Set the next one.</div>
+    <div class="ritual-box">
+      <div class="ritual-q">SESSION QUESTION</div>
+      <div class="ritual-a">${g.currentQuestion || '<span style="color:var(--text-dim)">Set your question below</span>'}</div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Today's question</label>
+      <input type="text" value="${esc(g.currentQuestion)}" oninput="updateActive('gate2','currentQuestion',this.value)" placeholder="e.g. What is driving margin compression in FY24?">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Notes & findings</label>
+      <textarea rows="5" oninput="updateActive('gate2','notes',this.value)" placeholder="Dump everything here. No formatting required.">${esc(g.notes)}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Next session's question</label>
+      <input type="text" value="${esc(g.nextQuestion)}" oninput="updateActive('gate2','nextQuestion',this.value)" placeholder="Write this before you close.">
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="aiSuggestQ()" style="margin-bottom:8px" id="ai-q-btn">✦ Suggest next question</button>
+    <div id="ai-loading-g2" class="hidden"><div class="ai-thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+    <div id="ai-output-g2" class="hidden"></div>
+    <div class="divider"></div>
+    <button class="btn btn-primary" ${canAdvance?'':'disabled'} onclick="setGate(3)">Business quality assessed → Gate 3</button>
+  `;
+}
+
+function renderGate3(s) {
+  const g = s.gate3;
+  const canAdvance = g.pwIV && g.klarmanEntry;
+  return `
+    <div class="gate-title">Gate 3 — Model</div>
+    <div class="gate-sub">Three scenarios. One probability-weighted IV. One Klarman entry.</div>
+    <div class="field-group">
+      <label class="field-label">Bear case assumptions</label>
+      <textarea rows="3" oninput="updateActive('gate3','bear',this.value)" placeholder="Key assumptions for bear case...">${esc(g.bear)}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Base case assumptions</label>
+      <textarea rows="3" oninput="updateActive('gate3','base',this.value)" placeholder="Key assumptions for base case...">${esc(g.base)}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Bull case assumptions</label>
+      <textarea rows="3" oninput="updateActive('gate3','bull',this.value)" placeholder="Key assumptions for bull case...">${esc(g.bull)}</textarea>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">PW Intrinsic Value</label>
+        <input type="text" value="${esc(g.pwIV)}" oninput="updateActive('gate3','pwIV',this.value)" placeholder="e.g. A$4.20">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Klarman Entry (35-40% MOS)</label>
+        <input type="text" value="${esc(g.klarmanEntry)}" oninput="updateActive('gate3','klarmanEntry',this.value)" placeholder="e.g. A$2.70">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-primary" ${canAdvance?'':'disabled'} onclick="setGate(4)">Model complete → Gate 4</button>
+  `;
+}
+
+function renderGate4(s) {
+  const g = s.gate4;
+  const canAdvance = g.bullCase && g.bearCase && g.thesisKiller && g.catalyst;
+  return `
+    <div class="gate-title">Gate 4 — Memo</div>
+    <div class="gate-sub">Two sentences max per field. Forces precision.</div>
+    <div class="field-group">
+      <label class="field-label">Bull case (2 sentences)</label>
+      <textarea rows="3" oninput="updateActive('gate4','bullCase',this.value)" placeholder="Why this works. What the market is missing.">${esc(g.bullCase)}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Bear case (2 sentences)</label>
+      <textarea rows="3" oninput="updateActive('gate4','bearCase',this.value)" placeholder="Why this fails. What you could be wrong about.">${esc(g.bearCase)}</textarea>
+    </div>
+    <div class="field-group">
+      <label class="field-label">What kills the thesis permanently</label>
+      <input type="text" value="${esc(g.thesisKiller)}" oninput="updateActive('gate4','thesisKiller',this.value)" placeholder="e.g. Regulatory removal of gaming licence">
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Catalyst</label>
+        <input type="text" value="${esc(g.catalyst)}" oninput="updateActive('gate4','catalyst',this.value)" placeholder="e.g. FY26 result">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Timeline</label>
+        <input type="text" value="${esc(g.timeline)}" oninput="updateActive('gate4','timeline',this.value)" placeholder="e.g. Aug 2026">
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="aiPremortem()" style="margin-bottom:8px">✦ Run pre-mortem</button>
+    <div id="ai-loading-g4" class="hidden"><div class="ai-thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>
+    <div id="ai-output-g4" class="hidden"></div>
+    <div class="divider"></div>
+    <button class="btn btn-primary" ${canAdvance?'':'disabled'} onclick="setGate(5)">Memo written → Gate 5</button>
+  `;
+}
+
+function renderGate5(s) {
+  const g = s.gate5;
+  const canComplete = g.decision && g.invalidator && g.catalystDate;
+  const pills = [['ACCUMULATE','acc'],['MONITOR','mon'],['PASS','pas']].map(([d,cls]) =>
+    `<button class="decision-pill ${cls} ${g.decision===d?'sel':''}" onclick="setDecision('${d}')">${d}</button>`
+  ).join('');
+  const triggerField = g.decision==='MONITOR' ? `
+    <div class="field-group">
+      <label class="field-label">Trigger price to accumulate</label>
+      <input type="text" value="${esc(g.triggerPrice)}" oninput="updateActive('gate5','triggerPrice',this.value)" placeholder="e.g. A$2.70 (Klarman entry)">
+    </div>` : '';
+  return `
+    <div class="gate-title">Gate 5 — Verdict</div>
+    <div class="gate-sub">Binary. No maybes. Sign it off.</div>
+    <div class="field-label">Decision</div>
+    <div class="decision-row">${pills}</div>
+    ${triggerField}
+    <div class="field-group">
+      <label class="field-label">What would invalidate the thesis</label>
+      <input type="text" value="${esc(g.invalidator)}" oninput="updateActive('gate5','invalidator',this.value)" placeholder="Specific event or metric, not vague.">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Next catalyst date</label>
+      <input type="text" value="${esc(g.catalystDate)}" oninput="updateActive('gate5','catalystDate',this.value)" placeholder="e.g. 28 Aug 2026">
+    </div>
+    <div class="divider"></div>
+    <button class="btn btn-primary" ${canComplete?'':'disabled'} style="${canComplete?'background:var(--pass)':''}" onclick="completeVerdict()">✓ Sign off deep dive</button>
+  `;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── MAIN RENDER ────────────────────────────────────────────────────────────────
+function render() {
+  const s = STATE.active;
+  const w = STATE.watch;
+  const v = STATE.verdicts;
+
+  // Header
+  const headerRight = s
+    ? `<span class="tag">${esc(s.ticker)}</span><div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);margin-top:4px">${v.length} completed · ${w.length} parked</div>`
+    : `<div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim)">${v.length} completed · ${w.length} parked</div>`;
+
+  // Nav
+  const tabs = [['active','Active'],['watchlist','Watchlist'],['verdicts','Verdicts']];
+  const nav = tabs.map(([k,l]) => `<button class="nav-btn ${STATE.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('');
+
+  // Tab content
+  let content = '';
+  if (STATE.tab === 'active') {
+    if (!s) {
+      content = `
+        <div class="empty-state">No active deep dive.<br>Start one below or activate from your watchlist.</div>
+        <div class="card">
+          <div class="card-label">New deep dive</div>
+          <div class="field-group"><label class="field-label">Company name</label><input type="text" id="new-name" placeholder="e.g. Endeavour Group"></div>
+          <div class="field-group"><label class="field-label">Ticker</label><input type="text" id="new-ticker" placeholder="e.g. EDV.AX" style="text-transform:uppercase"></div>
+          <div class="field-group"><label class="field-label">First question (optional)</label><input type="text" id="new-q" placeholder="e.g. What is the moat source?"></div>
+          <button class="btn btn-primary" onclick="startDive()">Begin deep dive →</button>
+        </div>`;
+    } else {
+      // Stock header card
+      const completed = s.currentGate - 1;
+      const stockHeader = `
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:var(--amber)">${esc(s.ticker)}</div>
+              <div style="font-size:14px;color:var(--text);margin-top:2px">${esc(s.name)}</div>
+              <div style="font-size:11px;color:var(--slate);margin-top:4px">Started ${esc(s.startedDate)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--slate);letter-spacing:.08em">GATE</div>
+              <div style="font-size:28px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--white);line-height:1">${s.currentGate}<span style="color:var(--text-dim)">/5</span></div>
+            </div>
+          </div>
+          ${renderGateBar(s.currentGate)}
+        </div>`;
+
+      // Session ritual / timer
+      let sessionBlock = '';
+      if (!STATE.sessionStarted) {
+        sessionBlock = `
+          <div class="card">
+            <div class="card-label">Session ritual</div>
+            <div class="field-group">
+              <label class="field-label">Question I'm answering today</label>
+              <input type="text" id="session-q" value="${esc(STATE.sessionQ)}" oninput="STATE.sessionQ=this.value" placeholder="${esc(s.gate2?.nextQuestion || 'e.g. What drives ROIC compression?')}">
+            </div>
+            <div class="field-group">
+              <label class="field-label">What done looks like</label>
+              <input type="text" id="session-done" value="${esc(STATE.sessionDone)}" oninput="STATE.sessionDone=this.value" placeholder="e.g. I know the margin driver">
+            </div>
+            <button class="btn btn-primary" onclick="startSession()">Start 25-min session →</button>
+          </div>`;
+      } else {
+        sessionBlock = `
+          <div class="card timer-wrap">
+            <div class="timer-ring ${STATE.timerDone?'done':''}" id="timer-ring">
+              <div class="timer-time mono" id="timer-time">${fmtTimer()}</div>
+              <div class="timer-lbl" id="timer-lbl">${STATE.timerDone?'DONE':STATE.timerRunning?'FOCUS':'PAUSED'}</div>
+            </div>
+            <div id="timer-done-msg" class="${STATE.timerDone?'':'hidden'}" style="color:var(--pass);font-family:'IBM Plex Mono',monospace;font-size:12px;margin-bottom:10px;font-weight:600;text-align:center">
+              Session complete. Write the next question before you close.
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-ghost" id="timer-toggle-btn" onclick="timerToggle()">${STATE.timerRunning?'Pause':'Resume'}</button>
+              <button class="btn btn-ghost" onclick="timerReset()">Reset</button>
+            </div>
+          </div>`;
+      }
+
+      // Jump rule
+      const jumpRule = `
+        <div class="jump-rule">
+          <div class="jump-rule-title">JUMPING RULE</div>
+          <div class="jump-rule-body">Feeling the pull to look at something new? Write the unanswered question on ${esc(s.ticker)} in Gate 2 first.</div>
+        </div>`;
+
+      // Gate content
+      let gateContent = '';
+      if (s.currentGate===1) gateContent = renderGate1(s);
+      else if (s.currentGate===2) gateContent = renderGate2(s);
+      else if (s.currentGate===3) gateContent = renderGate3(s);
+      else if (s.currentGate===4) gateContent = renderGate4(s);
+      else if (s.currentGate===5) gateContent = renderGate5(s);
+
+      content = `
+        ${stockHeader}
+        ${sessionBlock}
+        ${jumpRule}
+        <div class="card">${gateContent}</div>
+        <button class="btn btn-danger" onclick="abandonStock()" style="margin-top:8px">Abandon — move to watchlist</button>`;
+    }
+  }
+
+  else if (STATE.tab === 'watchlist') {
+    const items = w.length===0
+      ? '<div class="empty-state">Empty. Names you notice but aren\'t ready to dive on go here.</div>'
+      : w.map((item,i) => `
+        <div class="watch-item">
+          <div>
+            <div class="watch-ticker">${esc(item.ticker)}</div>
+            ${item.name?`<div class="watch-name">${esc(item.name)}</div>`:''}
+            ${item.note?`<div class="watch-note">${esc(item.note)}</div>`:''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:10px;width:auto" onclick="activateWatch(${i})">Dive →</button>
+            <button class="del-btn" onclick="removeWatch(${i})">×</button>
+          </div>
+        </div>`).join('');
+
+    content = `
+      <div class="card">
+        <div class="card-label">Park a name</div>
+        <div class="field-group"><label class="field-label">Ticker</label><input type="text" id="w-ticker" placeholder="e.g. EDV.AX" style="text-transform:uppercase"></div>
+        <div class="field-group"><label class="field-label">Company name</label><input type="text" id="w-name" placeholder="Optional"></div>
+        <div class="field-group"><label class="field-label">Why it's interesting</label><input type="text" id="w-note" placeholder="One sentence"></div>
+        <button class="btn btn-primary" onclick="addWatch()">Add to parking lot</button>
+      </div>
+      <div class="card">
+        <div class="card-label">Parking lot (${w.length})</div>
+        ${items}
+      </div>`;
+  }
+
+  else if (STATE.tab === 'verdicts') {
+    if (v.length===0) {
+      content = `<div class="card"><div class="empty-state">No completed deep dives yet.<br>Finish Gate 5 on your active stock to log a verdict here.</div></div>`;
+    } else {
+      const items = v.map((item,i) => {
+        const badgeCls = item.decision==='ACCUMULATE'?'acc':item.decision==='MONITOR'?'mon':'pas';
+        return `
+          <div class="verdict-item">
+            <div class="verdict-row">
+              <div><span class="verdict-ticker">${esc(item.ticker)}</span><span style="font-size:12px;color:var(--slate);margin-left:8px">${esc(item.name)}</span></div>
+              <span class="verdict-badge badge-${badgeCls}">${esc(item.decision)}</span>
+            </div>
+            <div class="verdict-meta">PW IV ${esc(item.pwIV)} · Klarman entry ${esc(item.klarmanEntry)}${item.triggerPrice?' · Trigger '+esc(item.triggerPrice):''}</div>
+            <div class="verdict-meta">Catalyst: ${esc(item.catalyst)} ${esc(item.catalystDate)} · Completed ${esc(item.completedDate)}</div>
+            <div class="verdict-meta" style="font-style:italic">Invalidated by: ${esc(item.invalidator)}</div>
+            <button class="del-btn" style="font-size:11px;margin-top:6px;color:var(--text-dim)" onclick="removeVerdict(${i})">Remove</button>
+          </div>`;
+      }).join('');
+      content = `<div class="card"><div class="card-label">Completed deep dives (${v.length})</div>${items}</div>`;
+    }
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div style="max-width:480px;margin:0 auto;padding:16px 16px 80px">
+      <div class="header">
+        <div>
+          <div class="header-title mono">DEEP DIVE</div>
+          <div class="header-sub">Value investing system</div>
+        </div>
+        <div style="text-align:right">${headerRight}</div>
+      </div>
+      <nav class="nav">${nav}</nav>
+      ${content}
+    </div>`;
+
+  // Re-attach AI state displays after render
+  if (STATE.tab==='active' && s) {
+    if (s.currentGate===2) { renderAI('g2'); }
+    if (s.currentGate===4) { renderAI('g4'); }
+  }
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────────────────
+function setTab(t) { STATE.tab=t; render(); }
+
+function startDive() {
+  const name = document.getElementById('new-name')?.value?.trim();
+  const ticker = document.getElementById('new-ticker')?.value?.trim().toUpperCase();
+  const q = document.getElementById('new-q')?.value?.trim();
+  if (!name||!ticker) return;
+  STATE.active = emptyStock(name, ticker, q);
+  STATE.sessionStarted = false;
+  STATE.timerSecs = 25*60;
+  STATE.timerRunning = false;
+  STATE.timerDone = false;
+  STATE.sessionQ = '';
+  STATE.sessionDone = '';
+  STATE.tab = 'active';
+  persist(); render();
+}
+
+function startSession() {
+  const q = document.getElementById('session-q')?.value?.trim() || STATE.sessionQ;
+  if (!q) return;
+  STATE.sessionQ = q;
+  STATE.sessionStarted = true;
+  STATE.timerSecs = 25*60;
+  STATE.timerDone = false;
+  render();
+  setTimeout(() => timerToggle(), 50);
+}
+
+function toggleCheck(i) {
+  if (!STATE.active) return;
+  STATE.active.gate1.checks[i] = !STATE.active.gate1.checks[i];
+  persist(); render();
+}
+
+function setGate1Verdict(v) {
+  if (!STATE.active) return;
+  STATE.active.gate1.verdict = v;
+  if (v==='PASS') STATE.active.currentGate = Math.max(STATE.active.currentGate, 1);
+  persist(); render();
+}
+
+function setGate(n) {
+  if (!STATE.active) return;
+  STATE.active.currentGate = n;
+  persist(); render();
+}
+
+function updateActive(gate, field, val) {
+  if (!STATE.active) return;
+  STATE.active[gate][field] = val;
+  persist();
+  // Live-update ritual box for gate2 currentQuestion
+  if (gate==='gate2' && field==='currentQuestion') {
+    const ra = document.querySelector('.ritual-a');
+    if (ra) ra.textContent = val || '';
+  }
+  // Update button disabled states without full re-render
+  updateButtons();
+}
+
+function updateButtons() {
+  const s = STATE.active;
+  if (!s) return;
+  const g = s.currentGate;
+  if (g===2) {
+    const can = s.gate2.currentQuestion && s.gate2.notes && s.gate2.nextQuestion;
+    const btn = document.querySelector('#app .btn-primary:last-of-type');
+    if (btn && btn.textContent.includes('Gate 3')) btn.disabled = !can;
+  }
+}
+
+function setDecision(d) {
+  if (!STATE.active) return;
+  STATE.active.gate5.decision = d;
+  persist(); render();
+}
+
+function completeVerdict() {
+  const s = STATE.active;
+  if (!s) return;
+  STATE.verdicts.unshift({
+    ticker: s.ticker, name: s.name,
+    decision: s.gate5.decision,
+    pwIV: s.gate3.pwIV,
+    klarmanEntry: s.gate3.klarmanEntry,
+    triggerPrice: s.gate5.triggerPrice,
+    catalyst: s.gate4.catalyst,
+    catalystDate: s.gate5.catalystDate,
+    invalidator: s.gate5.invalidator,
+    completedDate: new Date().toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})
+  });
+  STATE.active = null;
+  STATE.sessionStarted = false;
+  STATE.tab = 'verdicts';
+  persist(); render();
+}
+
+function abandonStock() {
+  if (!STATE.active) return;
+  if (!confirm(`Abandon ${STATE.active.ticker}? It will be moved to your watchlist.`)) return;
+  STATE.watch.unshift({
+    ticker: STATE.active.ticker,
+    name: STATE.active.name,
+    note: `Abandoned at Gate ${STATE.active.currentGate}`,
+    addedDate: new Date().toLocaleDateString('en-AU')
+  });
+  STATE.active = null;
+  STATE.sessionStarted = false;
+  persist(); render();
+}
+
+function addWatch() {
+  const ticker = document.getElementById('w-ticker')?.value?.trim().toUpperCase();
+  const name = document.getElementById('w-name')?.value?.trim();
+  const note = document.getElementById('w-note')?.value?.trim();
+  if (!ticker) return;
+  STATE.watch.unshift({ ticker, name, note, addedDate: new Date().toLocaleDateString('en-AU') });
+  persist(); render();
+}
+
+function removeWatch(i) {
+  STATE.watch.splice(i,1);
+  persist(); render();
+}
+
+function activateWatch(i) {
+  const item = STATE.watch[i];
+  STATE.active = emptyStock(item.name||item.ticker, item.ticker, '');
+  STATE.watch.splice(i,1);
+  STATE.sessionStarted = false;
+  STATE.timerSecs = 25*60;
+  STATE.timerRunning = false;
+  STATE.timerDone = false;
+  STATE.tab = 'active';
+  persist(); render();
+}
+
+function removeVerdict(i) {
+  STATE.verdicts.splice(i,1);
+  persist(); render();
+}
+
+// AI actions
+async function aiSuggestQ() {
+  const s = STATE.active;
+  if (!s) return;
+  const prompt = `You are a Klarman/Buffett-style value investor assistant. The investor is doing a deep dive on ${s.name} (${s.ticker}).
+Current question: "${s.gate2.currentQuestion}"
+Notes so far: "${s.gate2.notes}"
+Suggest ONE sharp follow-up question they should answer next to assess business quality. Focus on ROIC, competitive moat durability, capital allocation, or earnings quality. Be specific to this company. One sentence only.`;
+  await askClaude(prompt, 'g2');
+}
+
+async function aiPremortem() {
+  const s = STATE.active;
+  if (!s) return;
+  const prompt = `You are a rigorous value investing analyst applying Seth Klarman's framework.
+Company: ${s.name} (${s.ticker})
+Bull case: ${s.gate4.bullCase}
+Bear case: ${s.gate4.bearCase}
+Thesis killer: ${s.gate4.thesisKiller}
+PW IV: ${s.gate3.pwIV}, Klarman entry: ${s.gate3.klarmanEntry}
+Write a brutal pre-mortem: assume the investment has failed 3 years from now. List the 3 most likely specific reasons why, in order of probability. Each reason one sentence. Be specific to this business. No preamble.`;
+  await askClaude(prompt, 'g4');
+}
+
+// ── BOOT ───────────────────────────────────────────────────────────────────────
+loadState();
+render();
+</script>
+</body>
+</html>
